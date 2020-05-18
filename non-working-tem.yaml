@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Sample template that demonstrates the circular dependency
+Resources:
+  TestFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Path: /
+
+  TestEventFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Dummy function, simply logs received S3 events
+      Handler: index.handler
+      Runtime: python2.7
+      Role: !GetAtt 'TestFunctionRole.Arn'
+      Timeout: 240
+      Code:
+        ZipFile: |
+          import json
+          import logging
+          logger = logging.getLogger()
+          logger.setLevel(logging.DEBUG)
+
+          def handler(event, context):
+              logger.info('Received event: %s' % json.dumps(event))
+
+  TestS3BucketEventPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:invokeFunction
+      SourceAccount: !Ref 'AWS::AccountId'
+      FunctionName: !Ref 'TestEventFunction'
+      SourceArn: !GetAtt
+        - TestS3Bucket
+        - Arn
+      Principal: s3.amazonaws.com
+
+  TestS3Bucket:
+    Type: AWS::S3::Bucket
+    DependsOn: TestS3BucketEventPermission
+    Properties:
+      NotificationConfiguration:
+        LambdaConfigurations:
+          -
+            Function:
+              "Fn::GetAtt":
+                - 'TestEventFunction'
+                - 'Arn'
+            Event: s3:ObjectCreated:*
