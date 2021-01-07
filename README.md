@@ -2,9 +2,9 @@
 
 ## Resolutions
 
-* Define the S3 bucket name prior to create lambda permission.
+* Define the S3 bucket name prior to create lambda permission and hardcode the S3 ARN in lambda permission, thus !Ref or !GetAtt is not required.
 
-* Create the S3 bucket without notification configuration, and then add the bucket in the next stack update.
+* Create the S3 bucket without notification configuration, and then add notification configuration for the bucket in the next stack update.
 
 * Create a less-constrained Lambda permission. For example, allow invocations for a specific AWS account by omitting SourceArn.
 
